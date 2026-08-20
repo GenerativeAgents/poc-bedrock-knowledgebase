@@ -20,10 +20,15 @@ JOB=$(aws bedrock-agent start-ingestion-job --knowledge-base-id "$KB" --data-sou
 echo "取り込みジョブ開始: $JOB"
 
 while true; do
-  read -r STATUS SCANNED INDEXED FAILED < <(aws bedrock-agent get-ingestion-job \
+  # API が一時的に失敗しても取り込みはサーバ側で継続している。監視だけ落とさないよう待って再試行する
+  if ! OUT=$(aws bedrock-agent get-ingestion-job \
     --knowledge-base-id "$KB" --data-source-id "$DS" --ingestion-job-id "$JOB" --region "$REGION" \
     --query 'ingestionJob.[status,statistics.numberOfDocumentsScanned,statistics.numberOfNewDocumentsIndexed,statistics.numberOfDocumentsFailed]' \
-    --output text)
+    --output text 2>/dev/null); then
+    sleep 20
+    continue
+  fi
+  read -r STATUS SCANNED INDEXED FAILED <<< "$OUT"
   printf '\r%s  scanned=%s indexed=%s failed=%s   ' "$STATUS" "$SCANNED" "$INDEXED" "$FAILED"
   case "$STATUS" in
     COMPLETE) echo; echo "完了"; break ;;

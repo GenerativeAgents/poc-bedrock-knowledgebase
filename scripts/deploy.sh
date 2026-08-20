@@ -10,6 +10,7 @@ aws cloudformation deploy \
   --template-file "$(dirname "$0")/../infra/knowledge-base.yaml" \
   --stack-name "$STACK" \
   --capabilities CAPABILITY_IAM \
+  --no-fail-on-empty-changeset \
   --region "$REGION"
 
 echo "--- Outputs ---"
