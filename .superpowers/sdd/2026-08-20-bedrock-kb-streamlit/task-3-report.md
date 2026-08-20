@@ -44,66 +44,30 @@
 
 **実装後に config.py を退避して再取得した RED 出力です。事後的な再現であることを明記します。**
 
+実行コマンド:
 ```bash
-$ uv run pytest tests/test_config.py -v
+uv run pytest tests/test_config.py -v
 ```
 
-**出力:**
-```
-============================= test session starts ==============================
-platform darwin -- Python 3.12.12, pytest-9.1.1, pluggy-1.6.0 -- /Users/shingo/github/poc-bedrock-knowledgebase/.venv/bin/python
-cachedir: .pytest_cache
-rootdir: /Users/shingo/github/poc-bedrock-knowledgebase
-configfile: pyproject.toml
-plugins: anyio-4.14.2
-collecting ... collected 0 items / 1 error
+出力ファイル: `task-3-red.txt`
 
-==================================== ERRORS ====================================
-____________________ ERROR collecting tests/test_config.py _____________________
-ImportError while importing test module '/Users/shingo/github/poc-bedrock-knowledgebase/tests/test_config.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-../../.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/importlib/__init__.py:90: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-tests/test_config.py:5: in <module>
-    from kb_app.config import ConfigError, Settings, load_settings
-E   ModuleNotFoundError: No module named 'kb_app.config'
-=========================== short test summary info ============================
-ERROR tests/test_config.py
-============================== Interrupted: 1 error during collection ============================
-=============================== 1 error in 0.04s =======================================
-```
-
-**期待通り:** モジュール未作成のため collection error
+結果:
+- モジュール未作成のため `ModuleNotFoundError: No module named 'kb_app.config'` を発生
+- Interrupted により collection error が発生
+- 期待通りの失敗
 
 ### GREEN: 成功の確認
 
+実行コマンド:
 ```bash
-$ uv run pytest tests/test_config.py -v
+uv run pytest tests/test_config.py -v
 ```
 
-**出力:**
-```
-============================= test session starts ==============================
-platform darwin -- Python 3.12.12, pytest-9.1.1, pluggy-1.6.0 -- /Users/shingo/github/poc-bedrock-knowledgebase/.venv/bin/python
-cachedir: .pytest_cache
-rootdir: /Users/shingo/github/poc-bedrock-knowledgebase
-configfile: pyproject.toml
-plugins: anyio-4.14.2
-collecting ... collected 6 items
+出力ファイル: `task-3-green.txt`
 
-tests/test_config.py::test_環境変数がすべて揃っていれば_cloudformation_を呼ばない PASSED [ 16%]
-tests/test_config.py::test_環境変数が無ければ_outputs_から解決する PASSED [ 33%]
-tests/test_config.py::test_環境変数が一部だけなら残りを_outputs_で埋める PASSED [ 50%]
-tests/test_config.py::test_outputs_にも無ければ_configerror PASSED       [ 66%]
-tests/test_config.py::test_リージョンは環境変数で上書きできる PASSED     [ 83%]
-tests/test_config.py::test_settings_は不変 PASSED                        [100%]
-
-============================== 6 passed in 0.06s =======================================
-```
-
-**成功:** 6/6 PASSED
+結果:
+- **6 passed in 0.04s**
+- 全 6 つのテストが成功
 
 ## 変更したファイル
 
