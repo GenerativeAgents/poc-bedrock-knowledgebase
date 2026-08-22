@@ -76,3 +76,18 @@ def test_settings_は不変():
     s = Settings("kb", "ds", "bucket", "us-east-1", "arn")
     with pytest.raises(Exception):
         s.knowledge_base_id = "x"  # type: ignore[misc]
+
+
+def test_stack_名は環境変数で上書きできる():
+    class 記録するcfn(FakeCfn):
+        def __init__(self, outputs):
+            super().__init__(outputs)
+            self.stack_names = []
+
+        def describe_stacks(self, StackName):  # noqa: N803
+            self.stack_names.append(StackName)
+            return super().describe_stacks(StackName=StackName)
+
+    cfn = 記録するcfn(OUTPUTS)
+    load_settings(cfn=cfn, env={"STACK": "my-kb"})
+    assert cfn.stack_names == ["my-kb"]

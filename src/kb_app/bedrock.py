@@ -6,10 +6,10 @@ Streamlit に依存させないので、UI 抜きで単体テストできる。
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, NoReturn
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import BotoCoreError, ClientError
 
 from kb_app.citations import docs_url
 from kb_app.config import Settings
@@ -23,6 +23,9 @@ _HINTS = {
     "ThrottlingException": "リクエストが多すぎます。少し待ってから再実行してください。",
     "ValidationException": "リクエストが不正です。検索パラメータを見直してください。",
 }
+
+# SSO トークン失効などクライアント側で起きる認証エラー。サービスのエラーコードを持たない。
+_CREDENTIAL_HINT = "認証の有効期限が切れています。`aws sso login --sso-session ga` を実行してください。"
 
 
 class KnowledgeBaseError(RuntimeError):
@@ -50,10 +53,14 @@ def _client(settings: Settings, client: Any | None) -> Any:
     return boto3.client("bedrock-agent-runtime", region_name=settings.region)
 
 
-def _raise(e: ClientError) -> None:
-    code = e.response.get("Error", {}).get("Code", "")
-    hint = _HINTS.get(code, "詳細は例外メッセージを参照してください。")
-    raise KnowledgeBaseError(f"{code}: {hint}") from e
+def _raise(e: Exception) -> NoReturn:
+    """例外を利用者向けの対処法付きで包み直す。必ず送出するので戻らない。"""
+    if isinstance(e, ClientError):
+        code = e.response.get("Error", {}).get("Code", "")
+        hint = _HINTS.get(code, "詳細は例外メッセージを参照してください。")
+        raise KnowledgeBaseError(f"{code}: {hint}") from e
+    # BotoCoreError 系(SSO 失効・資格情報なし)はサービスのエラーコードを持たない
+    raise KnowledgeBaseError(f"{type(e).__name__}: {_CREDENTIAL_HINT}") from e
 
 
 def _uri(reference: dict[str, Any]) -> str:
@@ -81,7 +88,7 @@ def retrieve(query: str, *, settings: Settings, top_k: int = 5,
                 "vectorSearchConfiguration": {"numberOfResults": top_k}
             },
         )
-    except ClientError as e:
+    except (ClientError, BotoCoreError) as e:
         _raise(e)
     return [_chunk(r) for r in response.get("retrievalResults", [])]
 
@@ -108,7 +115,7 @@ def retrieve_and_generate(query: str, *, settings: Settings, top_k: int = 5,
 
     try:
         response = _client(settings, client).retrieve_and_generate(**request)
-    except ClientError as e:
+    except (ClientError, BotoCoreError) as e:
         _raise(e)
 
     chunks = [

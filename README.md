@@ -167,6 +167,31 @@ S3 Vectors は Service Quotas API 非対応(`NoSuchResourceException`)のため�
 3. topK を変えると参照チャンク数が変わる
 4. 「検索のみ」で生成がスキップされ、スコアが見える
 
+## 環境変数
+
+`src/kb_app/config.py` が読む環境変数は以下のとおり。
+
+| 環境変数 | 用途 |
+|---|---|
+| `STACK` | スタック名(既定 `poc-bedrock-kb`)。スクリプトとアプリの両方が参照する |
+| `AWS_REGION` | リージョン(既定 `us-east-1`) |
+| `KNOWLEDGE_BASE_ID` / `DATA_SOURCE_ID` / `DOCS_BUCKET` / `MODEL_ARN` | 個別に上書きしたいとき。未設定なら CloudFormation Outputs から解決する |
+
+## 後片付け
+
+S3 Vectors のインデックスと S3 のストレージは課金対象です。試し終えたら削除してください。
+
+CloudFormation は**空でない S3 バケットを削除できない**ため、先にオブジェクトを空にします。
+
+```bash
+export AWS_PROFILE=ga-dev
+BUCKET=$(aws cloudformation describe-stacks --stack-name poc-bedrock-kb --region us-east-1 \
+  --query "Stacks[0].Outputs[?OutputKey=='DocsBucketName'].OutputValue" --output text)
+aws s3 rm "s3://$BUCKET" --recursive
+aws cloudformation delete-stack --stack-name poc-bedrock-kb --region us-east-1
+aws cloudformation wait stack-delete-complete --stack-name poc-bedrock-kb --region us-east-1
+```
+
 ## 関連ドキュメント
 
 - 設計 spec: [`docs/superpowers/specs/2026-08-20-bedrock-kb-streamlit-design.md`](docs/superpowers/specs/2026-08-20-bedrock-kb-streamlit-design.md)

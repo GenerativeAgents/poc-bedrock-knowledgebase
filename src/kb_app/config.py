@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 STACK_NAME = "poc-bedrock-kb"
 DEFAULT_REGION = "us-east-1"
@@ -46,13 +47,19 @@ def load_settings(*, cfn: Any = None, env: dict[str, str] | None = None,
     """設定を解決する。CloudFormation は環境変数で埋まらなかったときだけ呼ぶ。"""
     env = os.environ if env is None else env
     region = env.get("AWS_REGION") or DEFAULT_REGION
+    stack_name = env.get("STACK") or stack_name
 
     values = {name: env.get(env_key) for name, (env_key, _) in _KEYS.items()}
     if not all(values.values()):
         client = cfn if cfn is not None else boto3.client("cloudformation", region_name=region)
         try:
             outputs = _outputs(client, stack_name)
-        except Exception as e:  # スタック未作成など
+        except BotoCoreError as e:
+            # SSO 失効・資格情報なし。スタックの有無とは無関係
+            raise ConfigError(
+                f"AWS の認証に失敗しました。`aws sso login --sso-session ga` を実行してください: {e}"
+            ) from e
+        except ClientError as e:
             raise ConfigError(
                 f"スタック {stack_name} の Outputs を取得できません。"
                 f"scripts/deploy.sh を実行したか確認してください: {e}"

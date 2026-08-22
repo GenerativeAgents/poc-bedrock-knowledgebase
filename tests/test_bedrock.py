@@ -126,3 +126,15 @@ def test_有効期限切れは対処法を含む(agent_client):
         with pytest.raises(KnowledgeBaseError) as e:
             retrieve("q", settings=SETTINGS, client=agent_client)
     assert "aws sso login" in str(e.value)
+
+
+def test_sso失効は認証の案内に変換される():
+    from botocore.exceptions import UnauthorizedSSOTokenError
+
+    class 失効クライアント:
+        def retrieve(self, **kwargs):
+            raise UnauthorizedSSOTokenError(error_msg="token expired")
+
+    with pytest.raises(KnowledgeBaseError) as e:
+        retrieve("q", settings=SETTINGS, client=失効クライアント())
+    assert "aws sso login" in str(e.value)
