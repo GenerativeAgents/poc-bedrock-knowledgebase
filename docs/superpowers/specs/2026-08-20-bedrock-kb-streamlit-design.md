@@ -49,9 +49,14 @@ Streamlit のローカル画面から検索パラメータを変えながら挙�
 
 S3 Vectors は Service Quotas API 非対応(`NoSuchResourceException`)のため、値はドキュメントから取得した。
 
-### モデル(実呼び出しでアクセス確認済み)
-- 埋め込み: `amazon.titan-embed-text-v2:0` / 1024次元
-- 生成: `us.anthropic.claude-sonnet-5`(推論プロファイル)
+### モデル
+- 埋め込み: `amazon.titan-embed-text-v2:0` / 1024次元(`invoke-model` で確認済み)
+- 生成: **`us.anthropic.claude-sonnet-4-6`**(推論プロファイル)
+
+> **2026-08-22 修正。** 当初この欄は `us.anthropic.claude-sonnet-5` としていたが誤りだった。
+> 確認に使ったのは `converse` API であり、実際に使う `RetrieveAndGenerate` は要件が異なる。
+> `claude-sonnet-5` は `RetrieveAndGenerate` でカスタムプロンプトテンプレートが必須で、
+> 指定すると `ValidationException` になる。全推論プロファイルを実測した結果は §12 を参照。
 
 ## 3. アーキテクチャ
 
@@ -154,7 +159,35 @@ Outputs: `KnowledgeBaseId` / `DataSourceId` / `DocsBucketName`。アプリはこ
 2. **全量(任意)** — 同じスクリプトで残り694ガイドを取得。上限は §2 のとおり全量でも余裕がある。
    追加コストは埋め込みが概算数ドル、加えて取得と取り込みの時間
 
-## 12. 未確定事項
+## 12. 未確定事項とその決着
 
-- S3 Vectors のハイブリッド検索対応(§6、実装時に実測)
-- 全量取得時の取り込み所要時間(1/10 の実測から外挿する)
+いずれも Task 8 の実環境検証(2026-08-22)で決着した。
+
+### S3 Vectors のハイブリッド検索 → **非対応**(決着)
+
+`retrieve` の `vectorSearchConfiguration.overrideSearchType` に `HYBRID` を指定すると次で拒否される。
+
+```
+ValidationException: HYBRID search type is not supported for search operation on index ZRTISSGKHF
+```
+
+`SEMANTIC` は受理される。設計時の合意どおり、画面の検索方式切り替えは実装しない。
+
+### 生成モデルの選定 → **既定を `claude-sonnet-4-6` に変更**(決着)
+
+全 `us.anthropic.*` 推論プロファイルで `RetrieveAndGenerate` を実測した結果:
+
+| 組み込みプロンプトで動作 | カスタムプロンプト必須 |
+|---|---|
+| `claude-sonnet-4-6` / `claude-sonnet-4-5-20250929-v1:0` | `claude-sonnet-5` / `claude-opus-5` |
+| `claude-opus-4-7` / `claude-opus-4-6-v1` / `claude-opus-4-5-20251101-v1:0` | `claude-opus-4-8` / `claude-fable-5` |
+| `claude-haiku-4-5-20251001-v1:0` | `claude-opus-4-1-20250805-v1:0` |
+
+最新世代(5系・opus-4-8・fable-5)は Bedrock KB 側の組み込みプロンプトテンプレートが未提供。
+`claude-3-sonnet` / `claude-3-haiku` / `claude-sonnet-4-20250514` はこのアカウントでモデルアクセスなし(404)。
+
+### 取り込み所要時間 → **6,810ページで36分23秒**(実測)
+
+`2026-08-22T02:25:49Z` 〜 `03:02:12Z`。scanned=6810 / indexed=6810 / failed=0。
+全量(約82,000ページ)へ単純に外挿すると約7時間強だが、1ジョブあたりの上限
+(ファイル数500万 / 100GB)には十分収まる。
