@@ -11,6 +11,7 @@ SRC="$(dirname "$0")/../data/aws-docs-ja"
 
 BUCKET=$(aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
   --query "Stacks[0].Outputs[?OutputKey=='DocsBucketName'].OutputValue" --output text)
+[ -n "$BUCKET" ] || { echo "DocsBucketName を取得できません。scripts/deploy.sh を実行しましたか?" >&2; exit 1; }
 
 echo "同期先: s3://$BUCKET/ja_jp/"
 aws s3 sync "$SRC" "s3://$BUCKET/ja_jp/" --region "$REGION" --only-show-errors
