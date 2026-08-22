@@ -13,7 +13,7 @@ Parameters:
     Default: 1024
   GenerationModelId:
     Type: String
-    Default: us.anthropic.claude-sonnet-5
+    Default: us.anthropic.claude-sonnet-4-6
 
 Resources:
   # ---- ソースドキュメント ----

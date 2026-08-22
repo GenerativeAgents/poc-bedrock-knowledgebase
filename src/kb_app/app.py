@@ -12,10 +12,16 @@ import streamlit as st
 from kb_app.bedrock import Answer, Chunk, KnowledgeBaseError, retrieve, retrieve_and_generate
 from kb_app.config import ConfigError, load_settings
 
+# RetrieveAndGenerate が組み込みプロンプトで動作するモデルのみ。
+# claude-sonnet-5 / opus-5 / opus-4-8 / fable-5 はカスタムプロンプトテンプレートが必須で、
+# 指定すると ValidationException になるため載せない(2026-08-22 実測)。
 MODELS = [
-    "us.anthropic.claude-sonnet-5",
-    "us.anthropic.claude-opus-4-8",
+    "us.anthropic.claude-sonnet-4-6",
     "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "us.anthropic.claude-opus-4-7",
+    "us.anthropic.claude-opus-4-6-v1",
+    "us.anthropic.claude-opus-4-5-20251101-v1:0",
+    "us.anthropic.claude-haiku-4-5-20251001-v1:0",
 ]
 
 st.set_page_config(page_title="AWS ドキュメント RAG", page_icon="📚", layout="wide")
