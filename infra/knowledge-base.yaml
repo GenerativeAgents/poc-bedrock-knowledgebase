@@ -40,7 +40,9 @@ Resources:
   VectorIndex:
     Type: AWS::S3Vectors::Index
     Properties:
-      VectorBucketName: !Ref VectorBucket
+      # VectorBucket の Ref は ARN(primaryIdentifier)を返すため、名前ではなく ARN で参照する。
+      # !Ref を VectorBucketName に渡すと 83文字の ARN が入り maxLength 63 を超えて CREATE_FAILED になる。
+      VectorBucketArn: !GetAtt VectorBucket.VectorBucketArn
       IndexName: !Sub '${ProjectName}-index'
       DataType: float32
       Dimension: !Ref EmbeddingDimension
